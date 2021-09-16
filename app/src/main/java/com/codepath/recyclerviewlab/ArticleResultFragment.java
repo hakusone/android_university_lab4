@@ -37,6 +37,9 @@ public class ArticleResultFragment extends Fragment {
     private ContentLoadingProgressBar progressSpinner;
     private RecyclerView recyclerView;
     Context context;
+    private String savedQuery;
+
+    private EndlessRecyclerViewScrollListener scrollListener;
 
 
     /**
@@ -82,8 +85,18 @@ public class ArticleResultFragment extends Fragment {
         adapter = new ArticleResultsRecyclerViewAdapter();
         progressSpinner = view.findViewById(R.id.progress);
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(context);
+        recyclerView.setLayoutManager(linearLayoutManager);
         recyclerView.setAdapter(adapter);
+
+        scrollListener = new EndlessRecyclerViewScrollListener(linearLayoutManager) {
+            @Override
+            public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
+                loadArticlesByPage(page);
+            }
+        };
+
+        recyclerView.addOnScrollListener(scrollListener);
 
         return view;
     }
@@ -103,6 +116,7 @@ public class ArticleResultFragment extends Fragment {
         Log.d("ArticleResultFragment", "loading articles for query " + query);
         Toast.makeText(getContext(), "Loading articles for \'" + query + "\'", Toast.LENGTH_SHORT).show();
 
+        savedQuery = query;
         progressSpinner.setVisibility(ProgressBar.VISIBLE);
 
         client.getArticlesByQuery(new CallbackResponse<List<Article>>() {
@@ -124,6 +138,23 @@ public class ArticleResultFragment extends Fragment {
     }
 
     private void loadArticlesByPage(final int page) {
-        // TODO(Checkpoint 4): Implement this method to do infinite scroll
+        Log.d("ArticleResultFragment", "loading articles for query " + savedQuery);
+        Toast.makeText(getContext(), "Loading articles for \'" + savedQuery + "\'", Toast.LENGTH_SHORT).show();
+
+        client.getArticlesByQuery(new CallbackResponse<List<Article>>() {
+            @Override
+            public void onSuccess(List<Article> models) {
+                Log.d("ArticleResultFragment", "Successfully loaded articles");
+                ArticleResultsRecyclerViewAdapter adapter = (ArticleResultsRecyclerViewAdapter) recyclerView.getAdapter();
+                adapter.addArticles(models);
+                adapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onFailure(Throwable error) {
+                Toast.makeText(getContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                Log.d("ArticleResultFragment", "Failure loading articles " + error.getMessage());
+            }
+        }, savedQuery);
     }
 }
